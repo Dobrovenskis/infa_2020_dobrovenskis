@@ -141,10 +141,13 @@ class target():
     def __init__(self):
         #self.points = 0
         self.live = 1
+        #self.vx = 1
+        #self.vy = 1
         # FIXME: don't work!!! How to call this functions when object is created?
         self.id = canv.create_oval(0, 0, 0, 0)
         #self.id_points = canv.create_text(30, 30, text=self.points, font='28')
         self.new_target()
+
 
     def new_target(self):
         """ Инициализация новой цели. """
@@ -154,6 +157,8 @@ class target():
         color = self.color = 'red'
         canv.coords(self.id, x - r, y - r, x + r, y + r)
         canv.itemconfig(self.id, fill=color)
+        self.vx = 1/10*rnd(-10,10)
+        self.vy = 1/10*rnd(-10,10)
 
     def hit(self):#, points=1):
         """Попадание шарика в цель."""
@@ -163,6 +168,37 @@ class target():
 
     def delete(self):
         canv.delete(self.id)
+
+    def set_coords(self):
+        canv.coords(
+            self.id,
+            self.x - self.r,
+            self.y - self.r,
+            self.x + self.r,
+            self.y + self.r
+        )
+
+    def move(self):
+        """Переместить мяч по прошествии единицы времени.
+
+        Метод описывает перемещение мяча за один кадр перерисовки. То есть, обновляет значения
+        self.x и self.y с учетом скоростей self.vx и self.vy, силы гравитации, действующей на мяч,
+        и стен по краям окна (размер окна 800х600).
+        """
+        # FIXME
+        self.x += self.vx
+        self.y -= self.vy
+
+        if self.x > 800:
+            self.vx *= -1
+        if self.x < 0:
+            self.vx *= -1
+        if self.y > 520 and self.vy < 0:
+            self.vy *= -1
+        if self.y < 0:
+            self.vy *= -1
+        self.set_coords()
+
 
 
 #t1 = target()
@@ -193,6 +229,8 @@ def new_game(number_of_target, event=''):
         t.live = 1
         #t.new_target()
     while targets or balls:
+        for t in targets:
+            t.move()
         for b in balls:
             b.move()
             for t in targets:
