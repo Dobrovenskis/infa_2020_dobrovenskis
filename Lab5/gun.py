@@ -53,6 +53,7 @@ class ball():
         и стен по краям окна (размер окна 800х600).
         """
         # FIXME
+
         self.x += self.vx
         self.y -= self.vy
         self.vy -= self.gravity
@@ -88,12 +89,27 @@ class ball():
         canv.delete(self.id)
 
 
+class rocket(ball):
+    def move(self):
+        """Переместить мяч по прошествии единицы времени.
+
+        Метод описывает перемещение мяча за один кадр перерисовки. То есть, обновляет значения
+        self.x и self.y с учетом скоростей self.vx и self.vy, силы гравитации, действующей на мяч,
+        и стен по краям окна (размер окна 800х600).
+        """
+        # FIXME
+        self.x += self.vx
+        self.y -= self.vy
+        self.set_coords()
+
+
 class gun():
     def __init__(self):
         self.f2_power = 10
         self.f2_on = 0
         self.an = 1
-        self.id = canv.create_line(20, 450, 50, 420, width=7)  # FIXME: don't know how to set it...
+        self.id = canv.create_line(20, 450, 50, 420, width=7)
+        self.f2_powerForRocket = 30
 
     def fire2_start(self, event):
         self.f2_on = 1
@@ -114,6 +130,21 @@ class gun():
         balls += [new_ball]
         self.f2_on = 0
         self.f2_power = 10
+
+    def fireRocket(self, event):
+        """Выстрел ракетой.
+
+        Происходит при нажатии пробела.
+        Начальные значения компонент скорости ракеты vx и vy зависят от положения мыши.
+        """
+        global balls, rockets, bullet
+        bullet += 1
+        new_rocket = rocket()
+        new_rocket.r += 2
+        self.an = math.atan((event.y - new_rocket.y) / (event.x - new_rocket.x))
+        new_rocket.vx = self.f2_powerForRocket * math.cos(self.an)
+        new_rocket.vy = - self.f2_powerForRocket * math.sin(self.an)
+        balls += [new_rocket]
 
     def targetting(self, event=0):
         """Прицеливание. Зависит от положения мыши."""
@@ -206,9 +237,11 @@ screen1 = canv.create_text(400, 300, text='', font='28')
 g1 = gun()
 bullet = 0
 balls = []
+rockets = []
 targets = []
 points = 0
 okno_pointof = canv.create_text(30, 30, text=points, font='28')
+
 
 def new_game(number_of_target, event=''):
     global gun, targets, screen1, balls, bullet, points, okno_pointof
@@ -221,13 +254,13 @@ def new_game(number_of_target, event=''):
     canv.bind('<Button-1>', g1.fire2_start)
     canv.bind('<ButtonRelease-1>', g1.fire2_end)
     canv.bind('<Motion>', g1.targetting)
+    canv.bind('<Button-3>', g1.fireRocket)
 
     z = 0.03
     for i in range(number_of_target):
         targets.append(target())
     for t in targets:
         t.live = 1
-        #t.new_target()
     while targets or balls:
         for t in targets:
             t.move()
