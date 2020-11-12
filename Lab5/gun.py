@@ -89,6 +89,7 @@ class ball():
         canv.delete(self.id)
 
 
+
 class rocket(ball):
     def move(self):
         """Переместить мяч по прошествии единицы времени.
@@ -108,8 +109,12 @@ class gun():
         self.f2_power = 10
         self.f2_on = 0
         self.an = 1
-        self.id = canv.create_line(20, 450, 50, 420, width=7)
+        self.y = 450
+        self.id = canv.create_line(20, self.y, 50, self.y - 30, width=7)
         self.f2_powerForRocket = 6
+        self.V = 0
+        self.Vm = 5
+        self.an = 0
 
     def fire2_start(self, event):
         self.f2_on = 1
@@ -122,7 +127,7 @@ class gun():
         """
         global balls, bullet
         bullet += 1
-        new_ball = ball()
+        new_ball = ball(y=self.y)
         new_ball.r += 5
         self.an = math.atan((event.y - new_ball.y) / (event.x - new_ball.x))
         new_ball.vx = self.f2_power * math.cos(self.an)
@@ -139,7 +144,7 @@ class gun():
         """
         global balls, rockets, bullet
         bullet += 1
-        new_rocket = rocket()
+        new_rocket = rocket(y=self.y)
         new_rocket.r += 2
         self.an = math.atan((event.y - new_rocket.y) / (event.x - new_rocket.x))
         new_rocket.vx = self.f2_powerForRocket * math.cos(self.an)
@@ -149,15 +154,16 @@ class gun():
     def targetting(self, event=0):
         """Прицеливание. Зависит от положения мыши."""
         if event:
-            self.an = math.atan((event.y - 450) / (event.x - 20))
+            self.an = math.atan((event.y - self.y) / (event.x - 20))
         if self.f2_on:
             canv.itemconfig(self.id, fill='orange')
         else:
             canv.itemconfig(self.id, fill='black')
-        canv.coords(self.id, 20, 450,
+        '''canv.coords(self.id, 20, self.y,
                     20 + max(self.f2_power, 20) * math.cos(self.an),
-                    450 + max(self.f2_power, 20) * math.sin(self.an)
-                    )
+                    self.y + max(self.f2_power, 20) * math.sin(self.an)
+                    )'''
+        self.set_coords()
 
     def power_up(self):
         if self.f2_on:
@@ -166,6 +172,27 @@ class gun():
             canv.itemconfig(self.id, fill='orange')
         else:
             canv.itemconfig(self.id, fill='black')
+
+    def move(self, direction='not'):
+        self.y += self.V
+        if self.y > 470 or self.y < 0:
+            self.V *= -1
+        self.set_coords()
+
+    def set_speed(self, event):
+        if str(event).split().count("char='s'") == 1:
+            self.V = self.Vm
+        elif str(event).split().count("char='w'") == 1:
+            self.V = -self.Vm
+        elif str(event).split().count("keysym=space") == 1:
+            self.V = 0
+
+    def set_coords(self):
+        canv.coords(self.id, 20, self.y,
+                    20 + max(self.f2_power, 20) * math.cos(self.an),
+                    self.y + max(self.f2_power, 20) * math.sin(self.an)
+                    )
+
 
 
 class target():
@@ -177,6 +204,7 @@ class target():
         self.r = r
         self.vx = vx
         self.vy = vy
+        self.time = 0
         # FIXME: don't work!!! How to call this functions when object is created?
         self.id = canv.create_oval(0, 0, 0, 0)
         #self.id_points = canv.create_text(30, 30, text=self.points, font='28')
@@ -195,8 +223,8 @@ class target():
         color = self.color = 'red'
         canv.coords(self.id, x - r, y - r, x + r, y + r)
         canv.itemconfig(self.id, fill=color)
-        self.vx = 1/10*rnd(-10,10)
-        self.vy = 1/10*rnd(-10,10)
+        self.vx = 5*1/10*rnd(-10,10)
+        self.vy = 5*1/10*rnd(-10,10)
 
     def hit(self):#, points=1):
         """Попадание шарика в цель."""
@@ -238,7 +266,13 @@ class target():
         self.set_coords()
 
     def reproduction(self):
-        pass
+        self.time += 1
+
+    def create_bomb(self):
+        global bombs
+        if self.time % 40 == 0:
+            new_bomb = bomb(x=self.x, y=self.y)
+            bombs += [new_bomb]
 
 
 class BigTarget(target):
@@ -262,8 +296,8 @@ class BigTarget(target):
         for i in range(5):
             canv.itemconfig(self.idm[i], fill=color)
         #canv.coords(self.id, x - r, y - r, x + r, y + r)
-        self.vx = 1/10*rnd(-10,10)
-        self.vy = 1/10*rnd(-10,10)
+        self.vx = 5*1/10*rnd(-10,10)
+        self.vy = 5*1/10*rnd(-10,10)
 
     def set_coords(self):
         canv.coords(self.idm[0], self.x - 2 * self.r_small, self.y - 2 * self.r_small, self.x, self.y)
@@ -285,13 +319,47 @@ class BigTarget(target):
         self.time += 1
         if self.time > 100:
             for i in range(5):
-                vx1 = 1/10*rnd(-10,10)
-                vy1 = 1/10*rnd(-10,10)
+                vx1 = 5*1/10*rnd(-10,10)
+                vy1 = 5*1/10*rnd(-10,10)
                 t = target(if_Big=True, x=self.x, y=self.y, r=self.r_small, vx=vx1, vy=vy1)
                 targets.insert(0, t)
             self.delete(if_reproduction=True)
             targets.remove(self)
 
+
+class bomb():
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+        self.V = 10
+        self.r = 10
+        self.color = 'black'
+        self.id = canv.create_oval(0, 0, 0, 0)
+        self.set_coords()
+        canv.itemconfig(self.id, fill='black')
+
+    def move(self):
+        self.x -= self.V
+        self.set_coords()
+
+    def set_coords(self):
+        canv.coords(
+            self.id,
+            self.x - self.r,
+            self.y - self.r,
+            self.x + self.r,
+            self.y + self.r
+        )
+
+    def hit_tank(self, tank):
+        global count_popal
+        if 20 < self.x < 30 and tank.y - self.r -7 < self.y < tank.y + self.r:
+            print('попали')
+            count_popal += 1
+
+
+    def delete(self):
+        canv.delete(self.id)
 
 
 
@@ -302,22 +370,29 @@ bullet = 0
 balls = []
 rockets = []
 targets = []
+bombs = []
 points = 0
+count_popal = 0
 okno_pointof = canv.create_text(30, 30, text=points, font='28')
 
 
 def new_game(number_of_target, number_of_Bigtarget, event=''):
-    global gun, targets, screen1, balls, bullet, points, okno_pointof
+    global gun, targets, screen1, balls, bullet, points, okno_pointof, bombs, count_popal
     #for i in range(number_of_target):
     #   targets.append(target())
 
+    bombs = []
     bullet = 0
     balls = []
     targets = []
+    count_popal = 0
     canv.bind('<Button-1>', g1.fire2_start)
     canv.bind('<ButtonRelease-1>', g1.fire2_end)
     canv.bind('<Motion>', g1.targetting)
     canv.bind('<Button-3>', g1.fireRocket)
+    canv.bind_all('w', g1.set_speed)
+    canv.bind_all('<s>', g1.set_speed)
+    canv.bind_all('<space>', g1.set_speed)
 
     z = 0.03
     for i in range(number_of_target):
@@ -327,9 +402,13 @@ def new_game(number_of_target, number_of_Bigtarget, event=''):
     for t in targets:
         t.live = 1
     while targets or balls:
+        g1.move()
         for t in targets:
             t.move()
             t.reproduction()
+            t.create_bomb()
+        for bom in bombs:
+            bom.move()
         for b in balls:
             b.move()
             for t in targets:
@@ -340,11 +419,20 @@ def new_game(number_of_target, number_of_Bigtarget, event=''):
                     targets.remove(t)
                     points += 1
                     canv.itemconfig(okno_pointof, text = points)
+        for b in bombs:
+            b.hit_tank(tank=g1)
         if not(targets):
             canv.bind('<Button-1>', '')
             canv.bind('<ButtonRelease-1>', '')
-            canv.itemconfig(screen1, text='Вы уничтожили цели за ' + str(bullet) + ' выстрелов')
+            if count_popal == 0:
+                canv.itemconfig(screen1, text='Вы уничтожили цели за ' + str(bullet) + ' выстрелов')
+            else:
+                canv.itemconfig(screen1, text='Вас подбили ' + str(count_popal) + \
+                                              ' раза \n' + 'Вы уничтожили цели за ' + str(bullet) + ' выстрелов')
+                #canv.itemconfig(screen1, text='Вы уничтожили цели за ' + str(bullet) + ' выстрелов')
             for k in balls:
+                k.delete()
+            for k in bombs:
                 k.delete()
             balls = []
         canv.update()
@@ -358,8 +446,8 @@ def new_game(number_of_target, number_of_Bigtarget, event=''):
     root.after(750, new_game(number_of_target, number_of_Bigtarget))
 
 
-number_of_target = 3
-number_of_Bigtarget = 5
+number_of_target = 2
+number_of_Bigtarget = 2
 new_game(number_of_target, number_of_Bigtarget)
 
 tk.mainloop()
