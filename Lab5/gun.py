@@ -109,7 +109,7 @@ class gun():
         self.f2_on = 0
         self.an = 1
         self.id = canv.create_line(20, 450, 50, 420, width=7)
-        self.f2_powerForRocket = 30
+        self.f2_powerForRocket = 6
 
     def fire2_start(self, event):
         self.f2_on = 1
@@ -169,15 +169,22 @@ class gun():
 
 
 class target():
-    def __init__(self):
+    def __init__(self, if_Big=False, x=0, y=0, r=0, vx=0, vy=0):
         #self.points = 0
         self.live = 1
-        #self.vx = 1
-        #self.vy = 1
+        self.x = x
+        self.y = y
+        self.r = r
+        self.vx = vx
+        self.vy = vy
         # FIXME: don't work!!! How to call this functions when object is created?
         self.id = canv.create_oval(0, 0, 0, 0)
         #self.id_points = canv.create_text(30, 30, text=self.points, font='28')
-        self.new_target()
+        if not(if_Big):
+           self.new_target()
+        else:
+            canv.coords(self.id, x - r, y - r, x + r, y + r)
+            canv.itemconfig(self.id, fill='red')
 
 
     def new_target(self):
@@ -230,6 +237,62 @@ class target():
             self.vy *= -1
         self.set_coords()
 
+    def reproduction(self):
+        pass
+
+
+class BigTarget(target):
+    def __init__(self):
+        self.live = 1
+        self.id = canv.create_oval(0, 0, 0, 0)
+        self.idm = []
+        self.time = 0
+        for i in range(5):
+            self.idm.append(canv.create_oval(0, 0, 0, 0))
+        self.new_target()
+
+    def new_target(self):
+        """ Инициализация новой цели. """
+        x = self.x = rnd(600, 780)
+        y = self.y = rnd(300, 550)
+        r = self.r = rnd(10, 100)
+        r_small = self.r_small = r/(2**(1/2)+1)
+        color = self.color = 'red'
+        self.set_coords()
+        for i in range(5):
+            canv.itemconfig(self.idm[i], fill=color)
+        #canv.coords(self.id, x - r, y - r, x + r, y + r)
+        self.vx = 1/10*rnd(-10,10)
+        self.vy = 1/10*rnd(-10,10)
+
+    def set_coords(self):
+        canv.coords(self.idm[0], self.x - 2 * self.r_small, self.y - 2 * self.r_small, self.x, self.y)
+        canv.coords(self.idm[1], self.x, self.y - 2 * self.r_small, self.x + 2 * self.r_small, self.y)
+        canv.coords(self.idm[2], self.x - 2 * self.r_small, self.y, self.x, self.y + 2 * self.r_small)
+        canv.coords(self.idm[3], self.x, self.y, self.x + 2 * self.r_small, self.y + 2 * self.r_small)
+        canv.coords(self.idm[4], self.x - self.r_small, self.y - self.r_small, self.x + self.r_small, self.y + self.r_small)
+
+    def delete(self, if_reproduction=False):
+        global points
+        if not(if_reproduction):
+            points += 4
+        for i in range(5):
+            canv.delete(self.idm[i])
+        canv.delete(self.id)
+
+    def reproduction(self):
+        global targets
+        self.time += 1
+        if self.time > 100:
+            for i in range(5):
+                vx1 = 1/10*rnd(-10,10)
+                vy1 = 1/10*rnd(-10,10)
+                t = target(if_Big=True, x=self.x, y=self.y, r=self.r_small, vx=vx1, vy=vy1)
+                targets.insert(0, t)
+            self.delete(if_reproduction=True)
+            targets.remove(self)
+
+
 
 
 #t1 = target()
@@ -243,7 +306,7 @@ points = 0
 okno_pointof = canv.create_text(30, 30, text=points, font='28')
 
 
-def new_game(number_of_target, event=''):
+def new_game(number_of_target, number_of_Bigtarget, event=''):
     global gun, targets, screen1, balls, bullet, points, okno_pointof
     #for i in range(number_of_target):
     #   targets.append(target())
@@ -259,11 +322,14 @@ def new_game(number_of_target, event=''):
     z = 0.03
     for i in range(number_of_target):
         targets.append(target())
+    for i in range(number_of_Bigtarget):
+        targets.append(BigTarget())
     for t in targets:
         t.live = 1
     while targets or balls:
         for t in targets:
             t.move()
+            t.reproduction()
         for b in balls:
             b.move()
             for t in targets:
@@ -289,10 +355,12 @@ def new_game(number_of_target, event=''):
     time.sleep(2.03)
     canv.itemconfig(screen1, text='')
     canv.delete(gun)
-    root.after(750, new_game(number_of_target))
+    root.after(750, new_game(number_of_target, number_of_Bigtarget))
 
 
 number_of_target = 3
-new_game(number_of_target)
+number_of_Bigtarget = 5
+new_game(number_of_target, number_of_Bigtarget)
 
 tk.mainloop()
+
